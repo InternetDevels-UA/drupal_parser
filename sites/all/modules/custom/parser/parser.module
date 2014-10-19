@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ * Build page and form for parser.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function parser_menu() {
+  $items = array();
+  $items['parser-page'] = array(
+    'title' => 'Parser',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('parser_page_form'),
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+/**
+ * Build parser form.
+ */
+function parser_page_form($form, $form_state) {
+	$form = array();
+	$form['url'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Url'),
+	);
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Parse'),
+	);
+	
+	if(!@$form_state['values']['url'])
+		return $form;
+	
+	if (!preg_match("~^(?:f|ht)tps?://~i", $form_state['values']['url']))
+        $form_state['values']['url'] = "http://" . $form_state['values']['url'];
+	
+	$content = file_get_contents($form_state['values']['url']);
+	$pattern = '/(http|https|ftp|ftps)\:\/\/[\w\.\/\-]*\.(jpg|png|gif|jpeg|tiff)/';
+
+	if(!preg_match_all($pattern, $content, $matches))
+		return $form;
+
+	$images = array();
+		
+	foreach($matches[0] as $key=>$item){
+		$images[] = array(
+			'#markup' => theme('image', array(
+				'path' => $item, 
+				'alt' => 'Test alt',
+				'title' => 'Test title',
+				'attributes' => array('style' => 'display: table;'),
+			)),
+		);
+	}
+
+	$form['image'] = $images;
+
+	return $form;
+}
+
+/**
+ * Validate function for parser_page_form.
+ */
+function parser_page_form_validate($form, &$form_state) {
+  if (!valid_url($form_state['values']['url']))
+    form_set_error('url', t('Value in field "Url" is wrong.'));
+}
+
+/**
+ * After submit action.
+ */
+function parser_page_form_submit($form, &$form_state) { 
+	$form_state['rebuild'] = TRUE;
+	
+    drupal_set_message(t('The form has been submitted.'));
+	
+	return $form;
+}
